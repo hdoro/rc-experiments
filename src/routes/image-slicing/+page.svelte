@@ -1,7 +1,12 @@
 <script>
+	import { throttle } from './throttle'
+
 	let containerEl
 	let previousTouch
 	let selection
+	let pointerDown = false
+	let currentCutPath = []
+
 	let imageObj = {
 		src: {
 			url: 'https://picsum.photos/seed/picsum/400',
@@ -70,8 +75,42 @@
 		}px; height: ${imageObj.height}px`
 	}
 
-	function handleMove({ movementX, movementY }) {
-		if (!selection || !containerEl) return false
+	const handleSlicingMovement = throttle(
+		({ clientX, clientY }) => {
+			console.log('Running')
+			if (selection || !containerEl) return false
+
+			const containerRect = containerEl.getBoundingClientRect()
+			const newPoint = [clientX - containerRect.x, clientY - containerRect.y]
+
+			currentCutPath = [...currentCutPath, newPoint]
+
+			// @TODO: check if shape was closed -if so, finishSlicing()
+		},
+		20,
+		true,
+	)
+
+	function finishSlicing() {
+		// @TODO add current mouse position to currentCutPath to prevent throttling from leading to unfinished line at the edge
+
+		/**
+		 * @TODO go through each shape and see if it should be cut
+		 * 1. see if there's any complete shape with currentCutPath and the edges of the current shape
+		 * 2. if not, the shape wasn't sliced
+		 * 	- @TODO perhaps we want to keep the slice marked, similarly to paper?
+		 * 		- If so, each slice should carry information on its cuts and those should be considered edges for the purpose of 1.
+		 * 3. if there are complete shapes, create new slices
+		 * 	- each complete shape will compose a new slice
+		 * 	- there could be more than one in a path - example of closed circles in the path
+		 * 	- the existing slice will be broken down as shapes are removed
+		 * 4. add the new slices and remove the existing one to imageObj
+		 */
+		currentCutPath = []
+	}
+
+	function handleSliceMove({ movementX, movementY }) {
+		if (!selection) return false
 
 		const slice = imageObj.slices.find((s) => s.key === selection)
 		if (!slice) return false
@@ -91,6 +130,8 @@
 		}
 		return true
 	}
+
+	$: console.log(currentCutPath)
 </script>
 
 <main>
@@ -102,17 +143,33 @@
 			if (selection) event.preventDefault()
 			const touch = event.touches[0]
 
-			if (previousTouch) {
-				const moved = handleMove({
+			if (selection && previousTouch) {
+				handleSliceMove({
 					movementX: touch.pageX - previousTouch.pageX,
 					movementY: touch.pageY - previousTouch.pageY,
 				})
-				console.log({ moved })
 			}
 
 			previousTouch = touch
 		}}
-		on:mousemove={handleMove}
+		on:mousemove={(event) => {
+			if (selection) {
+				handleSliceMove(event)
+			} else {
+				handleSlicingMovement(event)
+			}
+		}}
+		on:mousedown={() => (pointerDown = true)}
+		on:touchstart={() => (pointerDown = true)}
+		on:mouseup={() => {
+			pointerDown = false
+			finishSlicing()
+		}}
+		on:touchend={() => {
+			pointerDown = false
+			finishSlicing()
+		}}
+		on:mouseleave={finishSlicing}
 	>
 		{#each imageObj.slices as slice, index}
 			<!-- @TODO: consider refactoring into SVG with clipPath et. al - https://stackoverflow.com/a/37930426 -->
@@ -134,6 +191,22 @@
 				<img src={imageObj.src.url} alt="slice {index}" draggable="false" />
 			</button>
 		{/each}
+		{#if currentCutPath.length > 0}
+			<svg
+				viewBox="0 0 {containerEl?.getBoundingClientRect().width ||
+					100} {containerEl?.getBoundingClientRect().height || 100}"
+			>
+				<path
+					fill="none"
+					stroke="red"
+					stroke-width="3"
+					d={`
+				M ${currentCutPath[0].join(',')}
+				${currentCutPath.map((point) => `L ${point.join(',')}`).join('\n')}
+				`}
+				/>
+			</svg>
+		{/if}
 	</div>
 </main>
 
@@ -152,7 +225,8 @@
 	}
 
 	.container,
-	.slice {
+	.slice,
+	svg {
 		position: absolute;
 		left: 0;
 		top: 0;
