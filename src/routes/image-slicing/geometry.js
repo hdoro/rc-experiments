@@ -95,14 +95,3 @@ export function getPolygonClosingPoint(newPoint, polygon) {
 		pointBeforeIntersectionIdx,
 	}
 }
-
-/**
- * @param {Point[]} polygon
- * @param {number} width
- * @param {number} height
- *
- * @returns {Point[]}
- */
-export function absoluteToRelativePolygon(polygon, width, height) {
-	return polygon.map(([x, y]) => [x / width, y / height])
-}

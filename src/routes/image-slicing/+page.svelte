@@ -1,5 +1,5 @@
 <script>
-	import { absoluteToRelativePolygon, getPolygonClosingPoint } from './geometry'
+	import { getPolygonClosingPoint } from './geometry'
 	import { throttle } from './throttle'
 
 	let containerEl
@@ -21,7 +21,6 @@
 		slices: [
 			{
 				key: '1',
-				// @TODO: Percentage-based (current) or absolute with matrix transforms?
 				points: [
 					[0, 0],
 					[1, 0],
@@ -84,23 +83,32 @@
 
 			// @TODO: make points relative to the container, not absolute positioned
 			const containerRect = containerEl.getBoundingClientRect()
-			const newPoint = [clientX - containerRect.x, clientY - containerRect.y]
+			const newPoint = [
+				(clientX - containerRect.x) / containerRect.width,
+				(clientY - containerRect.y) / containerRect.height,
+			]
 			const lastPoint = currentCutPath.slice(-1)[0]
 			const { intersection, pointBeforeIntersectionIdx } =
 				getPolygonClosingPoint(newPoint, currentCutPath) || {}
 
 			if (intersection) {
+				// @TODO: disconsider whitespace from the container when cutting images
 				// @TODO: split completed polygons according to existing slices' borders
 				// @TODO: get information on which "host" slice is being sliced with each complete polygon
 				// @TODO: from this information, add the proper offset to these polygons
 				// @TODO: create "cut-outs" from host slices - follow Clippy's "Frame" example for how to do it https://bennettfeely.com/clippy/
 				const completePolygons = [
 					// starts & ends at the intersection
-					[
-						intersection,
-						...currentCutPath.slice(pointBeforeIntersectionIdx + 1),
-						intersection,
-					],
+					{
+						x: 0,
+						y: 0,
+						key: Math.random().toString(),
+						points: [
+							intersection,
+							...currentCutPath.slice(pointBeforeIntersectionIdx + 1),
+							intersection,
+						],
+					},
 				]
 				const incompleteCurves = [
 					// Start of the line before completed polygon
@@ -143,19 +151,7 @@
 		if (completePolygons?.length) {
 			imageObj = {
 				...imageObj,
-				slices: [
-					...imageObj.slices,
-					...completePolygons.map((completePolygon) => ({
-						key: Math.random().toString(),
-						points: absoluteToRelativePolygon(
-							completePolygon,
-							containerEl.getBoundingClientRect().width,
-							containerEl.getBoundingClientRect().height,
-						),
-						x: 0,
-						y: 0,
-					})),
-				],
+				slices: [...imageObj.slices, ...completePolygons],
 			}
 		}
 		// @TODO add current mouse position to currentCutPath to prevent throttling from leading to unfinished line at the edge
@@ -260,17 +256,22 @@
 			</button>
 		{/each}
 		{#if currentCutPath.length > 0}
+			{@const containerRect = containerEl?.getBoundingClientRect()}
+			{@const pointToAbs = (point) => [
+				point[0] * containerRect?.width || 1,
+				point[1] * containerRect?.height || 1,
+			]}
 			<svg
-				viewBox="0 0 {containerEl?.getBoundingClientRect().width ||
-					100} {containerEl?.getBoundingClientRect().height || 100}"
+				viewBox="0 0 {containerRect?.width || 100} {containerRect?.height ||
+					100}"
 			>
 				<path
 					fill="none"
 					stroke="red"
 					stroke-width="3"
 					d={`
-				M ${currentCutPath[0].join(',')}
-				${currentCutPath.map((point) => `L ${point.join(',')}`).join('\n')}
+				M ${pointToAbs(currentCutPath[0])}
+				${currentCutPath.map((point) => `L ${pointToAbs(point)}`).join('\n')}
 				`}
 				/>
 			</svg>
