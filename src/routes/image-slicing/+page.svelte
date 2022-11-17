@@ -1,4 +1,5 @@
 <script>
+	import { absoluteToRelativePolygon, getPolygonClosingPoint } from './geometry'
 	import { throttle } from './throttle'
 
 	let containerEl
@@ -56,34 +57,71 @@
 		const polygonPathPercentages = slice.points.map(
 			(point) => `${point[0] * 100}% ${point[1] * 100}%`,
 		)
-		const sortedCoordinates = slice.points
-			.reduce(
-				(coordinates, point) => {
-					return [
-						[...coordinates[0], point[0]],
-						[...coordinates[1], point[1]],
-					]
-				},
-				[[], []],
-			)
-			.map((coordinates) => coordinates.sort((a, b) => a - b))
+		// const sortedCoordinates = slice.points
+		// 	.reduce(
+		// 		(coordinates, point) => {
+		// 			return [
+		// 				[...coordinates[0], point[0]],
+		// 				[...coordinates[1], point[1]],
+		// 			]
+		// 		},
+		// 		[[], []],
+		// 	)
+		// 	.map((coordinates) => coordinates.sort((a, b) => a - b))
 
 		return `clip-path: polygon(${polygonPathPercentages.join(
 			',',
 		)}); transform: translate(${slice.x}px, ${slice.y}px); width: ${
 			imageObj.width
-		}px; height: ${imageObj.height}px`
+		}px; height: ${imageObj.height}px; z-index: ${
+			imageObj.slices.indexOf(slice) + 5
+		};`
 	}
 
 	const handleSlicingMovement = throttle(
 		({ clientX, clientY }) => {
-			console.log('Running')
 			if (selection || !containerEl) return false
 
+			// @TODO: make points relative to the container, not absolute positioned
 			const containerRect = containerEl.getBoundingClientRect()
 			const newPoint = [clientX - containerRect.x, clientY - containerRect.y]
+			const lastPoint = currentCutPath.slice(-1)[0]
+			const { intersection, pointBeforeIntersectionIdx } =
+				getPolygonClosingPoint(newPoint, currentCutPath) || {}
 
-			currentCutPath = [...currentCutPath, newPoint]
+			if (intersection) {
+				// @TODO: split completed polygons according to existing slices' borders
+				// @TODO: get information on which "host" slice is being sliced with each complete polygon
+				// @TODO: from this information, add the proper offset to these polygons
+				// @TODO: create "cut-outs" from host slices - follow Clippy's "Frame" example for how to do it https://bennettfeely.com/clippy/
+				const completePolygons = [
+					// starts & ends at the intersection
+					[
+						intersection,
+						...currentCutPath.slice(pointBeforeIntersectionIdx + 1),
+						intersection,
+					],
+				]
+				const incompleteCurves = [
+					// Start of the line before completed polygon
+					[
+						...currentCutPath.slice(0, pointBeforeIntersectionIdx),
+						intersection,
+					],
+					// End of the line
+					[intersection, newPoint],
+				]
+				finishSlicing({ completePolygons, incompleteCurves })
+				return
+			}
+
+			// Prevent point duplication
+			if (
+				!lastPoint ||
+				(newPoint[0] !== lastPoint[0] && newPoint[1] !== lastPoint[1])
+			) {
+				currentCutPath = [...currentCutPath, newPoint]
+			}
 
 			// @TODO: check if shape was closed -if so, finishSlicing()
 		},
@@ -91,7 +129,35 @@
 		true,
 	)
 
-	function finishSlicing() {
+	/**
+	 * @IDEA from https://github.com/ardov/Image-Cutter/blob/6c241f7f28d5cf24185ff366a3369190a7c4b4aa/code.ts#L52
+	 * Create paths from users' slices and just apply the images to them.
+	 * The code above is from a Figma plugin, essentially it gets shapes over an image and applies the image to them
+	 *
+	 * Closest I got: Inkscape's division merger - https://inkscape.org/forums/questions/splitting-an-image-into-segments/
+	 * Source code here: https://gitlab.com/inkscape/inkscape
+	 *
+	 * Possible prompt: image slicer
+	 * */
+	function finishSlicing({ completePolygons, incompleteCurves } = {}) {
+		if (completePolygons?.length) {
+			imageObj = {
+				...imageObj,
+				slices: [
+					...imageObj.slices,
+					...completePolygons.map((completePolygon) => ({
+						key: Math.random().toString(),
+						points: absoluteToRelativePolygon(
+							completePolygon,
+							containerEl.getBoundingClientRect().width,
+							containerEl.getBoundingClientRect().height,
+						),
+						x: 0,
+						y: 0,
+					})),
+				],
+			}
+		}
 		// @TODO add current mouse position to currentCutPath to prevent throttling from leading to unfinished line at the edge
 
 		/**
@@ -131,7 +197,7 @@
 		return true
 	}
 
-	$: console.log(currentCutPath)
+	$: console.log({ currentCutPath })
 </script>
 
 <main>
@@ -155,7 +221,7 @@
 		on:mousemove={(event) => {
 			if (selection) {
 				handleSliceMove(event)
-			} else {
+			} else if (pointerDown) {
 				handleSlicingMovement(event)
 			}
 		}}
@@ -176,8 +242,10 @@
 			<button
 				class="slice"
 				type="button"
-				on:mousedown={() =>
-					(selection = selection === slice.key ? undefined : slice.key)}
+				on:mousedown|stopPropagation={(event) => {
+					event.stopPropagation()
+					selection = selection === slice.key ? undefined : slice.key
+				}}
 				on:mouseup={() => (selection = undefined)}
 				on:touchstart={(e) => {
 					selection = selection === slice.key ? undefined : slice.key
@@ -230,6 +298,10 @@
 		position: absolute;
 		left: 0;
 		top: 0;
+	}
+
+	svg {
+		z-index: 50;
 	}
 
 	.slice {
