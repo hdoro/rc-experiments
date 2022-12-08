@@ -1,0 +1,76 @@
+<script>
+	export let image
+	export let send
+	export let state
+
+	$: patternId = getSymbolId(image)
+
+	function getSymbolId(image) {
+		const { key } = image
+		return `sliced-image--${key}`
+	}
+</script>
+
+<svg
+	style="transform: translate({image.x}px, {image.y}px); width: {image.width}px; height: {image.height}px"
+	viewBox="0 0 {image.width} {image.height}"
+	on:click={() => send({ type: 'SELECT_SLICE', key: image.key })}
+>
+	<defs>
+		<pattern
+			xlink:href="#{patternId}-source"
+			id={patternId}
+			patternTransform="scale({image.width / image.src.width}, {image.height /
+				image.src.height})"
+		/>
+		<pattern
+			id="{patternId}-source"
+			patternUnits="userSpaceOnUse"
+			width={image.src.width}
+			height={image.src.height}
+		>
+			<image
+				width={image.src.width}
+				height={image.src.height}
+				preserveAspectRatio="none"
+				style="image-rendering: optimizeSpeed"
+				xlink:href={image.src.url}
+				x={0}
+				y={0}
+			/>
+		</pattern>
+	</defs>
+	{#if image.points}
+		{@const pointToAbs = (point) => [
+			point[0] * image?.width || 1,
+			point[1] * image?.height || 1,
+		]}
+		<path
+			style="fill: url(#{patternId})"
+			d={`
+						M ${pointToAbs(image.points[0])}
+						${image.points.map((point) => `L ${pointToAbs(point)}`).join('\n')}
+						`}
+		/>
+	{:else}
+		<rect
+			x={0}
+			y={0}
+			style="fill: url(#{patternId})"
+			width={image.width}
+			height={image.height}
+		/>
+	{/if}
+</svg>
+
+<style>
+	svg {
+		position: absolute;
+		left: 0;
+		top: 0;
+	}
+
+	svg {
+		z-index: 50;
+	}
+</style>
