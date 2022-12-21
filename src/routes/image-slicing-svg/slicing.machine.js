@@ -5,6 +5,16 @@ export const slicingMachine = createMachine({
 	initial: 'idle',
 	context: {
 		selectedSlice: undefined, // key
+		slicingPath: [],
+		pointerDownOrigin: undefined,
+	},
+	on: {
+		RELEASE_POINTER: {
+			actions: 'releasePointer',
+		},
+		PRESS_POINTER: {
+			actions: 'setPointer',
+		},
 	},
 	states: {
 		idle: {
@@ -23,6 +33,10 @@ export const slicingMachine = createMachine({
 						SLICING_TOOL: {
 							target: 'slicingTool',
 						},
+						MOVE_POINTER: {
+							actions: 'moveSlice',
+							cond: 'pointerIsDown',
+						},
 					},
 				},
 				slicingTool: {
@@ -30,29 +44,17 @@ export const slicingMachine = createMachine({
 						MOVING_TOOL: {
 							target: 'movingTool',
 						},
-					},
-					states: {
-						pointerUp: {
-							on: {
-								PRESS_POINTER: {
-									target: 'pointerDown',
-								},
-							},
-						},
-						pointerDown: {
-							on: {
-								MOVE_POINTER: {
-									actions: 'drawPath',
-								},
-								RELEASE_POINTER: {
-									target: 'pointerUp',
-								},
-							},
+						MOVE_POINTER: {
+							actions: 'addPathToSlicing',
+							cond: 'pointerIsDown',
 						},
 					},
 				},
 			},
 			on: {
+				SELECT_SLICE: {
+					actions: 'setSlice',
+				},
 				DESELECT: {
 					target: 'idle',
 					actions: 'setSlice',

@@ -1,20 +1,18 @@
 <script>
+	export let key
 	export let image
 	export let send
 	export let state
 
-	$: patternId = getSymbolId(image)
-
-	function getSymbolId(image) {
-		const { key } = image
-		return `sliced-image--${key}`
-	}
+	$: patternId = `sliced-image--${key}`
 </script>
 
 <svg
-	style="transform: translate({image.x}px, {image.y}px); width: {image.width}px; height: {image.height}px"
+	style="transform: translate({image.x}px, {image.y}px); width: {image.width}px; height: {image.height}px; z-index: {100 -
+		image.order}"
 	viewBox="0 0 {image.width} {image.height}"
-	on:click={() => send({ type: 'SELECT_SLICE', key: image.key })}
+	on:click|stopPropagation={() => send({ type: 'SELECT_SLICE', key })}
+	on:mousedown={() => send({ type: 'SELECT_SLICE', key })}
 >
 	<defs>
 		<pattern
