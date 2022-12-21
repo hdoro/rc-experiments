@@ -41,6 +41,10 @@ export const slicingMachine = createMachine({
 				},
 				slicingTool: {
 					on: {
+						FINISH_SLICING: {
+							target: 'movingTool',
+							actions: 'finishSlicing',
+						},
 						MOVING_TOOL: {
 							target: 'movingTool',
 						},

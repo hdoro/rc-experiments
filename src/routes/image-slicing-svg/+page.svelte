@@ -1,7 +1,8 @@
 <script>
 	import { browser } from '$app/environment'
 	import { useMachine } from '@xstate/svelte'
-	import { assign } from 'xstate'
+	import { assign, actions } from 'xstate'
+	import { getPolygonClosingPoint } from '../image-slicing/geometry'
 	import SlicedImage from './SlicedImage.svelte'
 	import { slicingMachine } from './slicing.machine'
 
@@ -76,15 +77,88 @@
 					return event.key
 				},
 			}),
-			addPathToSlicing: assign({
-				slicingPath: (context, { event }) => {
-					const containerRect = containerEl.getBoundingClientRect()
-					const newPoint = [
-						(event.clientX - containerRect.x) / containerRect.width,
-						(event.clientY - containerRect.y) / containerRect.height,
+			finishSlicing: actions.pure((context, { completePolygons }) => {
+				const selectedSlice = images[context.selectedSlice]
+				const newSlices = completePolygons.map((polygon) => [
+					Math.random().toString(),
+					{
+						...selectedSlice,
+						points: polygon,
+						order: -1,
+					},
+				])
+
+				images = Object.assign({}, images, Object.fromEntries(newSlices))
+
+				// @TODO add current mouse position to currentCutPath to prevent throttling from leading to unfinished line at the edge
+
+				/**
+				 * @TODO go through each shape and see if it should be cut
+				 * 1. see if there's any complete shape with currentCutPath and the edges of the current shape
+				 * 2. if not, the shape wasn't sliced
+				 * 	- @TODO perhaps we want to keep the slice marked, similarly to paper?
+				 * 		- If so, each slice should carry information on its cuts and those should be considered edges for the purpose of 1.
+				 * 3. if there are complete shapes, create new slices
+				 * 	- each complete shape will compose a new slice
+				 * 	- there could be more than one in a path - example of closed circles in the path
+				 * 	- the existing slice will be broken down as shapes are removed
+				 * 4. add the new slices and remove the existing one to imageObj
+				 */
+				return [
+					assign({
+						pointerDownOrigin: undefined,
+						slicingPath: [],
+						selectedSlice: newSlices[0][0],
+					}),
+				]
+			}),
+			addPathToSlicing: actions.pure((context, { event }) => {
+				const containerRect = containerEl.getBoundingClientRect()
+				const newPoint = [
+					(event.clientX - containerRect.x) / containerRect.width,
+					(event.clientY - containerRect.y) / containerRect.height,
+				]
+				const { slicingPath } = context
+
+				const { intersection, pointBeforeIntersectionIdx } =
+					getPolygonClosingPoint(newPoint, slicingPath) || {}
+
+				if (intersection) {
+					// @TODO: disconsider whitespace from the container when cutting images
+					// @TODO: split completed polygons according to existing slices' borders
+					// @TODO: get information on which "host" slice is being sliced with each complete polygon
+					// @TODO: from this information, add the proper offset to these polygons
+					// @TODO: create "cut-outs" from host slices - follow Clippy's "Frame" example for how to do it https://bennettfeely.com/clippy/
+					const completePolygons = [
+						// starts & ends at the intersection
+						[
+							intersection,
+							...slicingPath.slice(pointBeforeIntersectionIdx + 1),
+							intersection,
+						],
 					]
-					return [...context.slicingPath, newPoint]
-				},
+					const incompleteCurves = [
+						// Start of the line before completed polygon
+						[...slicingPath.slice(0, pointBeforeIntersectionIdx), intersection],
+						// End of the line
+						[intersection, newPoint],
+					]
+
+					const lastPoint = slicingPath.slice(-1)[0]
+					// Prevent point duplication
+					if (
+						!lastPoint ||
+						(newPoint[0] !== lastPoint[0] && newPoint[1] !== lastPoint[1])
+					) {
+						return actions.send({
+							type: 'FINISH_SLICING',
+							completePolygons,
+							incompleteCurves,
+						})
+					}
+				}
+
+				return assign({ slicingPath: [...slicingPath, newPoint] })
 			}),
 			moveSlice: (context, { event }) => {
 				const slice = images[context.selectedSlice]
@@ -104,7 +178,7 @@
 	})
 
 	// $: if (browser) console.log($state)
-	// $: if (browser) console.log(images)
+	$: if (browser) console.log({ images })
 </script>
 
 <svelte:window
@@ -136,7 +210,7 @@
 		{#each Object.entries(images) as [key, image]}
 			<SlicedImage {key} {image} {send} {state} />
 		{/each}
-		{#if $state.context.slicingPath.length > 0}
+		{#if $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
 			{@const containerRect = containerEl?.getBoundingClientRect()}
 			{@const pointToAbs = (point) => [
 				point[0] * containerRect?.width || 1,

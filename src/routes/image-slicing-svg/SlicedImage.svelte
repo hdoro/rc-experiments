@@ -7,7 +7,9 @@
 	$: patternId = `sliced-image--${key}`
 </script>
 
+<!-- @TODO: proper viewbox for slices -->
 <svg
+	data-selected={$state.context.selectedSlice === key}
 	style="transform: translate({image.x}px, {image.y}px); width: {image.width}px; height: {image.height}px; z-index: {100 -
 		image.order}"
 	viewBox="0 0 {image.width} {image.height}"
@@ -68,7 +70,7 @@
 		top: 0;
 	}
 
-	svg {
-		z-index: 50;
+	svg[data-selected='true'] {
+		box-shadow: 0px 0px 0px 3px hsl(240, 70%, 60%);
 	}
 </style>
