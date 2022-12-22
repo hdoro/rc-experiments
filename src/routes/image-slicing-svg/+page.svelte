@@ -1,61 +1,14 @@
 <script>
 	import { browser } from '$app/environment'
 	import { useMachine } from '@xstate/svelte'
-	import { assign, actions } from 'xstate'
-	import { getPolygonClosingPoint } from '../image-slicing/geometry'
+	import { actions, assign } from 'xstate'
+	import { INITIAL_IMAGES } from './initialData'
+	import { parseSlicingPoint } from './parseSlicingPoint'
 	import SlicedImage from './SlicedImage.svelte'
 	import { slicingMachine } from './slicing.machine'
 
 	let containerEl
-	let images = {
-		'1': {
-			order: 0,
-			src: {
-				url: 'https://picsum.photos/seed/picsum/400',
-				width: 400,
-				height: 400,
-			},
-			width: 600,
-			height: 600,
-			x: 0,
-			y: 0,
-		},
-		'2': {
-			order: 1,
-			src: {
-				url: 'https://picsum.photos/seed/picsum/400',
-				width: 400,
-				height: 400,
-			},
-			width: 400,
-			height: 400,
-			x: 0,
-			y: 600,
-			points: [
-				[0, 0],
-				[1, 0],
-				// [1, 1],
-				[0, 1],
-			],
-		},
-		'3': {
-			order: 3,
-			src: {
-				url: 'https://picsum.photos/seed/picsum/400',
-				width: 400,
-				height: 400,
-			},
-			width: 150,
-			height: 150,
-			x: 650,
-			y: 400,
-			points: [
-				[1, 1],
-				[0.5, 0.5],
-				[0, 1],
-			],
-		},
-	}
+	let images = INITIAL_IMAGES
 
 	const { send, state } = useMachine(slicingMachine, {
 		guards: {
@@ -112,53 +65,26 @@
 					}),
 				]
 			}),
-			addPathToSlicing: actions.pure((context, { event }) => {
+			addSlicingPoint: actions.pure((context, { event }) => {
 				const containerRect = containerEl.getBoundingClientRect()
-				const newPoint = [
-					(event.clientX - containerRect.x) / containerRect.width,
-					(event.clientY - containerRect.y) / containerRect.height,
-				]
-				const { slicingPath } = context
+				const { newPoint, completePolygons, incompleteCurves } =
+					parseSlicingPoint({
+						slicingPath: context.slicingPath,
+						containerRect,
+						event,
+					})
 
-				const { intersection, pointBeforeIntersectionIdx } =
-					getPolygonClosingPoint(newPoint, slicingPath) || {}
-
-				if (intersection) {
-					// @TODO: disconsider whitespace from the container when cutting images
-					// @TODO: split completed polygons according to existing slices' borders
-					// @TODO: get information on which "host" slice is being sliced with each complete polygon
-					// @TODO: from this information, add the proper offset to these polygons
-					// @TODO: create "cut-outs" from host slices - follow Clippy's "Frame" example for how to do it https://bennettfeely.com/clippy/
-					const completePolygons = [
-						// starts & ends at the intersection
-						[
-							intersection,
-							...slicingPath.slice(pointBeforeIntersectionIdx + 1),
-							intersection,
-						],
-					]
-					const incompleteCurves = [
-						// Start of the line before completed polygon
-						[...slicingPath.slice(0, pointBeforeIntersectionIdx), intersection],
-						// End of the line
-						[intersection, newPoint],
-					]
-
-					const lastPoint = slicingPath.slice(-1)[0]
-					// Prevent point duplication
-					if (
-						!lastPoint ||
-						(newPoint[0] !== lastPoint[0] && newPoint[1] !== lastPoint[1])
-					) {
-						return actions.send({
-							type: 'FINISH_SLICING',
-							completePolygons,
-							incompleteCurves,
-						})
-					}
+				if (completePolygons?.length) {
+					return actions.send({
+						type: 'FINISH_SLICING',
+						completePolygons,
+						incompleteCurves,
+					})
 				}
 
-				return assign({ slicingPath: [...slicingPath, newPoint] })
+				if (newPoint) {
+					return assign({ slicingPath: [...context.slicingPath, newPoint] })
+				}
 			}),
 			moveSlice: (context, { event }) => {
 				const slice = images[context.selectedSlice]

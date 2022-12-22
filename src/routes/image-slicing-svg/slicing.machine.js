@@ -49,7 +49,7 @@ export const slicingMachine = createMachine({
 							target: 'movingTool',
 						},
 						MOVE_POINTER: {
-							actions: 'addPathToSlicing',
+							actions: 'addSlicingPoint',
 							cond: 'pointerIsDown',
 						},
 					},
