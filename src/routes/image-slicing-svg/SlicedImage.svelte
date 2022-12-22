@@ -49,7 +49,16 @@
 			style="fill: url(#{patternId})"
 			d={`
 						M ${pointToAbs(image.points[0])}
-						${image.points.map((point) => `L ${pointToAbs(point)}`).join('\n')}
+						${image.points
+							.map((point, idx, path) => {
+								if (point === 'M') {
+									const nextPoint = path[idx + 1]
+									return nextPoint ? `M ${pointToAbs(nextPoint)}` : ''
+								}
+								return `L ${pointToAbs(point)}`
+							})
+							.join('\n')}
+							Z
 						`}
 		/>
 	{:else}

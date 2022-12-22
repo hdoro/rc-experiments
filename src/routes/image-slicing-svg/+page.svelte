@@ -30,18 +30,38 @@
 					return event.key
 				},
 			}),
-			finishSlicing: actions.pure((context, { completePolygons }) => {
+			finishSlicing: actions.pure((context, { completePolygon }) => {
 				const selectedSlice = images[context.selectedSlice]
-				const newSlices = completePolygons.map((polygon) => [
-					Math.random().toString(),
-					{
-						...selectedSlice,
-						points: polygon,
-						order: -1,
-					},
-				])
+				if (!selectedSlice) {
+					return
+				}
+				const newSlice = {
+					...selectedSlice,
+					points: completePolygon,
+					order: -1,
+				}
+				const newSliceKey = Math.random().toString()
 
-				images = Object.assign({}, images, Object.fromEntries(newSlices))
+				const UNCUT_POINTS = [
+					[0, 0],
+					[1, 0],
+					[1, 1],
+					[0, 1],
+					[0, 0],
+				]
+
+				images = {
+					...images,
+					[context.selectedSlice]: {
+						...selectedSlice,
+						points: [
+							...(selectedSlice.points || UNCUT_POINTS),
+							'M',
+							...newSlice.points,
+						],
+					},
+					[newSliceKey]: newSlice,
+				}
 
 				// @TODO add current mouse position to currentCutPath to prevent throttling from leading to unfinished line at the edge
 
@@ -61,23 +81,23 @@
 					assign({
 						pointerDownOrigin: undefined,
 						slicingPath: [],
-						selectedSlice: newSlices[0][0],
+						selectedSlice: newSliceKey,
 					}),
 				]
 			}),
 			addSlicingPoint: actions.pure((context, { event }) => {
 				const containerRect = containerEl.getBoundingClientRect()
-				const { newPoint, completePolygons, incompleteCurves } =
+				const { newPoint, completePolygon, incompleteCurves } =
 					parseSlicingPoint({
 						slicingPath: context.slicingPath,
 						containerRect,
 						event,
 					})
 
-				if (completePolygons?.length) {
+				if (completePolygon?.length) {
 					return actions.send({
 						type: 'FINISH_SLICING',
-						completePolygons,
+						completePolygon,
 						incompleteCurves,
 					})
 				}
@@ -153,7 +173,13 @@
 					d={`
 				M ${pointToAbs($state.context.slicingPath[0])}
 				${$state.context.slicingPath
-					.map((point) => `L ${pointToAbs(point)}`)
+					.map((point, idx, path) => {
+						if (point === 'M') {
+							const nextPoint = path[idx + 1]
+							return nextPoint ? `M ${pointToAbs(nextPoint)}` : ''
+						}
+						return `L ${pointToAbs(point)}`
+					})
 					.join('\n')}
 				`}
 				/>
