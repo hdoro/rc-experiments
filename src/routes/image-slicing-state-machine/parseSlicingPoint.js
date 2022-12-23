@@ -1,9 +1,12 @@
 import { getPolygonClosingPoint } from '../image-slicing/geometry'
 
-export function parseSlicingPoint({ slicingPath, containerRect, event }) {
+export function parseSlicingPoint({ slicingPath, sliceRect, event }) {
+	if (!sliceRect) {
+		return {}
+	}
 	const newPoint = [
-		(event.clientX - containerRect.x) / containerRect.width,
-		(event.clientY - containerRect.y) / containerRect.height,
+		(event.clientX - sliceRect.x) / sliceRect.width,
+		(event.clientY - sliceRect.y) / sliceRect.height,
 	]
 
 	const { intersection, pointBeforeIntersectionIdx } =

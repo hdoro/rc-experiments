@@ -2,10 +2,10 @@
 	import { browser } from '$app/environment'
 	import { useMachine } from '@xstate/svelte'
 	import { actions, assign } from 'xstate'
-	import { buildPathDefinition } from './buildPathDefinition'
-	import { INITIAL_IMAGES } from './initialData'
+	import { INITIAL_IMAGES, UNCUT_POINTS } from './initialData'
 	import { parseSlicingPoint } from './parseSlicingPoint'
-	import SlicedImage from './SlicedImage.svelte'
+	// import SlicedImage from './SlicedImageSVG.svelte'
+	import SlicedImage from './SlicedImageClipPath.svelte'
 	import { slicingMachine } from './slicing.machine'
 
 	let containerEl
@@ -43,14 +43,6 @@
 				}
 				const newSliceKey = Math.random().toString()
 
-				const UNCUT_POINTS = [
-					[0, 0],
-					[1, 0],
-					[1, 1],
-					[0, 1],
-					[0, 0],
-				]
-
 				images = {
 					...images,
 					[context.selectedSlice]: {
@@ -87,11 +79,13 @@
 				]
 			}),
 			addSlicingPoint: actions.pure((context, { event }) => {
-				const containerRect = containerEl.getBoundingClientRect()
+				const sliceRect = document
+					.getElementById(`slice-${context.selectedSlice}`)
+					?.getBoundingClientRect()
 				const { newPoint, completePolygon, incompleteCurves } =
 					parseSlicingPoint({
 						slicingPath: context.slicingPath,
-						containerRect,
+						sliceRect,
 						event,
 					})
 
@@ -157,24 +151,6 @@
 		{#each Object.entries(images) as [key, image]}
 			<SlicedImage {key} {image} {send} {state} />
 		{/each}
-		{#if $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
-			{@const containerRect = containerEl?.getBoundingClientRect()}
-			<svg
-				viewBox="0 0 {containerRect?.width || 100} {containerRect?.height ||
-					100}"
-			>
-				<path
-					fill="none"
-					stroke="red"
-					stroke-width="3"
-					d={buildPathDefinition(
-						$state.context.slicingPath,
-						containerRect?.width,
-						containerRect?.height,
-					)}
-				/>
-			</svg>
-		{/if}
 	</div>
 </main>
 

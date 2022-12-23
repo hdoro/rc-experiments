@@ -1,3 +1,11 @@
+export const UNCUT_POINTS = [
+	[0, 0],
+	[1, 0],
+	[1, 1],
+	[0, 1],
+	[0, 0],
+]
+
 export const INITIAL_IMAGES = {
 	1: {
 		order: 0,
