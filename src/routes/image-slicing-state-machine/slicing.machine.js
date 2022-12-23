@@ -59,6 +59,10 @@ export const slicingMachine = createMachine({
 				SELECT_SLICE: {
 					actions: 'setSlice',
 				},
+				DELETE: {
+					actions: 'deleteSlice',
+					target: 'idle',
+				},
 				DESELECT: {
 					target: 'idle',
 					actions: 'setSlice',

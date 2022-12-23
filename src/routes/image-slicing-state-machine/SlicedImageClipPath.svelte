@@ -39,7 +39,7 @@
 	<img src={image.src.url} alt=" " draggable="false" />
 
 	<!-- Draw slicing from the image's origin -->
-	{#if $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
+	{#if selected && $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
 		<svg
 			viewBox="0 0 {image?.width || 100} {image?.height || 100}"
 			class="slicing-path"

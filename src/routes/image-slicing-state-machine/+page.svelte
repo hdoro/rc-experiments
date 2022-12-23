@@ -31,6 +31,11 @@
 					return event.key
 				},
 			}),
+			deleteSlice: actions.pure((context) => {
+				const { [context.selectedSlice]: _, ...newImages } = images
+				images = newImages
+				return assign({ selectedSlice: undefined })
+			}),
 			finishSlicing: actions.pure((context, { completePolygon }) => {
 				const selectedSlice = images[context.selectedSlice]
 				if (!selectedSlice) {
@@ -126,6 +131,9 @@
 	on:keydown={(event) => {
 		if (event.key.toUpperCase() === 'ESCAPE') {
 			send('DESELECT')
+		}
+		if (event.key.toUpperCase() === 'BACKSPACE') {
+			send('DELETE')
 		}
 	}}
 	on:mousemove={(event) => {
