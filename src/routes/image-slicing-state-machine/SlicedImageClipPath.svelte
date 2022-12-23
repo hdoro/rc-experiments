@@ -37,9 +37,11 @@
 	id={`slice-${key}`}
 >
 	<img src={image.src.url} alt=" " draggable="false" />
+</button>
 
-	<!-- Draw slicing from the image's origin -->
-	{#if selected && $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
+<!-- Draw slicing from the image's origin -->
+{#if selected && $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
+	<div class="slicing-path" {style}>
 		<svg
 			viewBox="0 0 {image?.width || 100} {image?.height || 100}"
 			class="slicing-path"
@@ -55,8 +57,8 @@
 				)}
 			/>
 		</svg>
-	{/if}
-</button>
+	</div>
+{/if}
 
 {#if selected}
 	{@const points = image.points || UNCUT_POINTS}
@@ -79,7 +81,8 @@
 <style>
 	button,
 	.highlighter,
-	img {
+	img,
+	.slicing-path {
 		position: absolute;
 		left: 0;
 		top: 0;
@@ -91,11 +94,11 @@
 	}
 
 	.slicing-path {
-		position: relative;
 		z-index: 1000;
 	}
 
-	.highlighter {
+	.highlighter,
+	.slicing-path {
 		pointer-events: none;
 		user-select: none;
 		overflow: visible;
