@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment'
 	import { useMachine } from '@xstate/svelte'
 	import { actions, assign } from 'xstate'
+	import { buildPathDefinition } from './buildPathDefinition'
 	import { INITIAL_IMAGES } from './initialData'
 	import { parseSlicingPoint } from './parseSlicingPoint'
 	import SlicedImage from './SlicedImage.svelte'
@@ -158,10 +159,6 @@
 		{/each}
 		{#if $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
 			{@const containerRect = containerEl?.getBoundingClientRect()}
-			{@const pointToAbs = (point) => [
-				point[0] * containerRect?.width || 1,
-				point[1] * containerRect?.height || 1,
-			]}
 			<svg
 				viewBox="0 0 {containerRect?.width || 100} {containerRect?.height ||
 					100}"
@@ -170,18 +167,11 @@
 					fill="none"
 					stroke="red"
 					stroke-width="3"
-					d={`
-				M ${pointToAbs($state.context.slicingPath[0])}
-				${$state.context.slicingPath
-					.map((point, idx, path) => {
-						if (point === 'M') {
-							const nextPoint = path[idx + 1]
-							return nextPoint ? `M ${pointToAbs(nextPoint)}` : ''
-						}
-						return `L ${pointToAbs(point)}`
-					})
-					.join('\n')}
-				`}
+					d={buildPathDefinition(
+						$state.context.slicingPath,
+						containerRect?.width,
+						containerRect?.height,
+					)}
 				/>
 			</svg>
 		{/if}

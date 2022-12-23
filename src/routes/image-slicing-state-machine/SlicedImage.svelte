@@ -1,4 +1,6 @@
 <script>
+	import { buildPathDefinition } from './buildPathDefinition'
+
 	export let key
 	export let image
 	export let send
@@ -41,25 +43,9 @@
 		</pattern>
 	</defs>
 	{#if image.points}
-		{@const pointToAbs = (point) => [
-			point[0] * image?.width || 1,
-			point[1] * image?.height || 1,
-		]}
 		<path
 			style="fill: url(#{patternId})"
-			d={`
-						M ${pointToAbs(image.points[0])}
-						${image.points
-							.map((point, idx, path) => {
-								if (point === 'M') {
-									const nextPoint = path[idx + 1]
-									return nextPoint ? `M ${pointToAbs(nextPoint)}` : ''
-								}
-								return `L ${pointToAbs(point)}`
-							})
-							.join('\n')}
-							Z
-						`}
+			d={buildPathDefinition(image.points, image?.width, image?.height, true)}
 		/>
 	{:else}
 		<rect
