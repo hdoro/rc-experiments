@@ -14,3 +14,9 @@
 
 - They have a geometry lib [lib2geom](https://gitlab.com/inkscape/lib2geom)
 - Docs for their code: https://inkscape.gitlab.io/inkscape/doxygen/
+
+## Other references
+
+- This thread from Steve Ruiz: https://twitter.com/steveruizok/status/1607760459075035136
+  - Led me to: https://github.com/jbuckmccready/CavalierContours (web demo here: https://jbuckmccready.github.io/CavalierContoursWebDemo/)
+  - Which led me to a cool idea for collage effects in the app: adding colored offsets to images with a dynamic, fast iteration like the one here: https://jbuckmccready.github.io/cavalier_contours_web_demo_page/#/pline_offset
