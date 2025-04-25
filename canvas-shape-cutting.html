@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<body>
+		<canvas id="myCanvas"></canvas>
+
+		<img
+			src="https://picsum.photos/seed/picsum/400"
+			style="clip-path: circle(75% at 50% 50%) inset"
+		/>
+
+		<script>
+			// Get a reference to the canvas element
+			const canvas = document.getElementById('myCanvas')
+
+			// Get the canvas context
+			const ctx = canvas.getContext('2d')
+
+			// Load the image
+			const image = new Image()
+			image.src = 'https://picsum.photos/seed/picsum/400'
+			image.onload = () => {
+				// Set the canvas size to match the image size
+				canvas.width = image.width
+				canvas.height = image.height
+
+				// Draw the image
+				ctx.drawImage(image, 0, 0)
+
+				// Define the circular path
+				ctx.beginPath()
+				ctx.arc(
+					canvas.width / 2,
+					canvas.height / 2,
+					canvas.width / 4,
+					0,
+					2 * Math.PI,
+				)
+				ctx.closePath()
+
+				// Use the "clip" method to mask out the area outside the circular path
+				ctx.clip()
+
+				// Clear the area inside the circular path
+				ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+				// Reset the clipping region
+				ctx.resetClip()
+			}
+		</script>
+	</body>
+</html>

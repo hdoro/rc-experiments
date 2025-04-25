@@ -6,6 +6,9 @@ export const UNCUT_POINTS = [
 	[0, 0],
 ]
 
+// ARRAY: [ x, y ] (python's list)
+// OBJECT: { x: 10, y: 30 } (dictionary in python)
+
 export const INITIAL_IMAGES = {
 	1: {
 		order: 0,
@@ -18,6 +21,12 @@ export const INITIAL_IMAGES = {
 		height: 600,
 		x: 0,
 		y: 0,
+		points: [
+			[1, 1],
+			[0, 1],
+			[0, 0],
+			[1, 0],
+		],
 	},
 	2: {
 		order: 1,

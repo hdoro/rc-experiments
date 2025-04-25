@@ -1,11 +1,16 @@
 <script>
 	import { buildPathDefinition } from './buildPathDefinition'
-	import { UNCUT_POINTS } from './initialData'
 
 	export let key
 	export let image
 	export let send
 	export let state
+
+	function getPolygonCenter(points) {
+		const x = points.reduce((acc, point) => acc + point[0], 0) / points.length
+		const y = points.reduce((acc, point) => acc + point[1], 0) / points.length
+		return [x, y]
+	}
 
 	$: selected =
 		$state.matches('selected') && $state.context.selectedSlice === key
@@ -15,6 +20,10 @@
 		`width: ${image.width}px`,
 		`height: ${image.height}px`,
 		`z-index: ${100 - image.order}`,
+		image.points?.length > 0 &&
+			`--center: ${getPolygonCenter(image.points)
+				.map((n) => n * 100)
+				.join('% ')}%`,
 
 		image.points?.length > 0 &&
 			`--path: '${buildPathDefinition(
@@ -28,29 +37,46 @@
 		.join(';')
 </script>
 
+{#if selected}
+	{#if image.points?.length > 0}
+		<svg
+			viewBox="0 0 {image?.width || 100} {image?.height || 100}"
+			class="highlighter"
+			{style}
+			draggable="false"
+			aria-hidden
+		>
+			<path
+				fill="none"
+				stroke="blue"
+				stroke-width="3"
+				d={buildPathDefinition(image.points, image?.width, image?.height)}
+			/>
+		</svg>
+	{/if}
+{/if}
+
 <button
 	data-selected={selected}
 	data-clipped={image.points?.length > 0}
 	on:click|stopPropagation={() => send({ type: 'SELECT_SLICE', key })}
 	on:mousedown={() => send({ type: 'SELECT_SLICE', key })}
 	{style}
-	id={`slice-${key}`}
 >
-	<img src={image.src.url} alt=" " draggable="false" />
-</button>
+	<!-- {#if selected}
+	<div
+		class="highlighter"
+	/>
+{/if} -->
 
-<!-- Draw slicing from the image's origin -->
-{#if selected && $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
-	<div class="slicing-path" {style}>
-		<svg
-			viewBox="0 0 {image?.width || 100} {image?.height || 100}"
-			class="slicing-path"
-		>
+	<img src={image.src.url} alt=" " draggable="false" />
+
+	{#if $state.matches('selected.slicingTool') && $state.context.slicingPath.length > 0}
+		<svg viewBox="0 0 {image?.width || 100} {image?.height || 100}">
 			<path
 				fill="none"
 				stroke="red"
 				stroke-width="3"
-				fill-rule="evenodd"
 				d={buildPathDefinition(
 					$state.context.slicingPath,
 					image?.width,
@@ -58,32 +84,13 @@
 				)}
 			/>
 		</svg>
-	</div>
-{/if}
-
-{#if selected}
-	{@const points = image.points || UNCUT_POINTS}
-	<svg
-		viewBox="0 0 {image?.width || 100} {image?.height || 100}"
-		class="highlighter"
-		draggable="false"
-		aria-hidden
-		{style}
-	>
-		<path
-			fill="none"
-			stroke="blue"
-			stroke-width="2"
-			d={buildPathDefinition(points, image?.width, image?.height, true)}
-		/>
-	</svg>
-{/if}
+	{/if}
+</button>
 
 <style>
 	button,
 	.highlighter,
-	img,
-	.slicing-path {
+	img {
 		position: absolute;
 		left: 0;
 		top: 0;
@@ -92,19 +99,10 @@
 	}
 	button[data-clipped='true'] {
 		clip-path: path(var(--path));
-		clip-rule: evenodd;
 	}
 
-	.slicing-path {
-		z-index: 1000;
-	}
-
-	.highlighter,
-	.slicing-path {
-		pointer-events: none;
+	.highlighter {
 		user-select: none;
-		overflow: visible;
-		stroke-linecap: square;
 	}
 
 	img {
@@ -113,6 +111,5 @@
 		object-fit: cover;
 		user-select: none;
 		clip-path: inherit;
-		clip-rule: evenodd;
 	}
 </style>

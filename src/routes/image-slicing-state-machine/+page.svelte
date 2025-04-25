@@ -44,7 +44,7 @@
 				const newSlice = {
 					...selectedSlice,
 					points: completePolygon,
-					order: -1,
+					order: selectedSlice.order - 1,
 				}
 				const newSliceKey = Math.random().toString()
 
@@ -123,7 +123,7 @@
 		},
 	})
 
-	// $: if (browser) console.log($state)
+	$: if (browser) console.log($state)
 	$: if (browser) console.log({ images })
 </script>
 
